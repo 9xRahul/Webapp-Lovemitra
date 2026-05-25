@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+
+@theme {
+  --color-primary-start: #FF0055;
+  --color-primary-end: #FF5500;
+  --color-pastel-pink: #FFF0F3;
+  --color-pastel-orange: #FFF8F0;
+  
+  --color-app-bg: #111111;
+  --color-app-card: #1A1A1A;
+  --color-app-text: #FFFFFF;
+  --color-app-text-muted: #A0A0A0;
+  
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  
+  --font-inter: 'Inter', sans-serif;
+  --font-poppins: 'Poppins', sans-serif;
+  
+  --background-image-brand-gradient: linear-gradient(to right, var(--color-primary-start), var(--color-primary-end));
+}
+
+.marketing-site {
+  font-family: 'Inter', sans-serif;
+  background-color: white;
+  color: #111827; /* gray-900 */
+  overflow-x: hidden;
+}
+
+.marketing-site h1, .marketing-site h2, .marketing-site h3, .marketing-site h4, .marketing-site h5, .marketing-site h6 {
+  font-family: 'Poppins', sans-serif;
+}
+
+@utility gradient-text {
+  @apply bg-clip-text text-transparent bg-brand-gradient;
+}
+
+@utility gradient-button {
+  @apply bg-brand-gradient text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 hover:shadow-lg hover:opacity-90 active:scale-95 cursor-pointer;
+}
+
+@utility outline-button {
+  @apply border-2 border-primary-start text-primary-start font-semibold py-3 px-8 rounded-full transition-all duration-300 hover:bg-primary-start hover:text-white active:scale-95 cursor-pointer;
+}
+
+@utility card-shadow {
+  box-shadow: 0 10px 30px -5px rgba(255, 77, 109, 0.1), 0 4px 10px -5px rgba(255, 77, 109, 0.04);
+}
+
+@utility glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
+}
