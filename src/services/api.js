@@ -23,6 +23,7 @@ export default api;
 export const UserService = {
   getMe: () => api.get('/users/me'),
   updateMe: (data) => api.patch('/users/updateMe', data),
+  getUserById: (uid) => api.get(`/users/${uid}`),
 };
 
 export const MatchingService = {
@@ -34,11 +35,13 @@ export const MatchingService = {
   getReceivedLikes: () => api.get('/matching/received-likes'),
   getReceivedViews: () => api.get('/matching/received-views'),
   getMatches: () => api.get('/matching/matches'),
+  getRelationshipIds: () => api.get('/matching/relationship-ids'),
 };
 
 export const ChatService = {
   getConversations: () => api.get('/chat/conversations'),
-  getMessages: (chatId) => api.get(`/chat/messages/${chatId}`),
+  getMessages: (chatId, before = '') => api.get(`/chat/messages/${chatId}${before ? `?before=${before}` : ''}`),
   sendMessage: (data) => api.post('/chat/messages', data), // expects FormData if media, or JSON { chatId, text, receiverId }
+  markAsRead: (chatId) => api.patch(`/chat/messages/${chatId}/read`),
 };
 

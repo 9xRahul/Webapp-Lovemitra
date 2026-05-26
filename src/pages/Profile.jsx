@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { User, Settings, Image as ImageIcon } from 'lucide-react';
+import { User, Settings, Image as ImageIcon, LogOut } from 'lucide-react';
 import { auth } from '../firebase';
 import { UserService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
@@ -11,6 +12,7 @@ const Profile = () => {
   // Form State
   const [formData, setFormData] = useState({ first_name: '', bio: '', city: '' });
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
@@ -44,6 +46,11 @@ const Profile = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    navigate('/');
   };
 
   if (loading) return <div className="page-center">Loading Profile...</div>;
@@ -117,6 +124,14 @@ const Profile = () => {
 
             <button className="btn-primary edit-profile-btn" onClick={() => setIsEditing(true)}>
               Edit Profile
+            </button>
+            <button 
+              className="btn-primary" 
+              onClick={handleLogout} 
+              style={{ width: '100%', marginTop: '15px', background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)' }}
+            >
+              <LogOut size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Log Out
             </button>
           </>
         )}

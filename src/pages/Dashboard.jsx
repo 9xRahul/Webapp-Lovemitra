@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MatchingService, ChatService, UserService } from '../services/api';
 import { Search, X, Heart, MessageCircle, BadgeCheck, Briefcase, GraduationCap, Sparkles, Cigarette, Wine, Utensils, Languages, Camera, Smartphone, Mail, Share, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import TinderCard from 'react-tinder-card';
 import { auth } from '../firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
+import MatchDialog from '../components/MatchDialog';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const currentIndexRef = useRef(currentIndex);
@@ -23,6 +26,12 @@ const Dashboard = () => {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState(null);
 
+  // Match Dialog State
+  const [myProfile, setMyProfile] = useState(null);
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [matchedUser, setMatchedUser] = useState(null);
+  const [matchData, setMatchData] = useState(null);
+
   // Refs for programmatic swiping
   const cardRefs = useMemo(() => Array(100).fill(0).map(() => React.createRef()), []);
 
@@ -37,6 +46,7 @@ const Dashboard = () => {
         const res = await UserService.getMe();
         if (res.data.status === 'success') {
           setDailyRequestCount(res.data.data.user.dailyRequestCount);
+          setMyProfile(res.data.data.user);
         }
       } catch (err) {
         console.error("Failed to load user info", err);
@@ -76,7 +86,12 @@ const Dashboard = () => {
     updateCurrentIndex(index - 1);
     try {
       if (dir === 'right') {
-        await MatchingService.likeUser(uid);
+        const res = await MatchingService.likeUser(uid);
+        if (res.data.isMatch && res.data.data) {
+          setMatchData(res.data.data.match);
+          setMatchedUser(res.data.data.matchedUser);
+          setMatchDialogOpen(true);
+        }
       } else if (dir === 'left') {
         await MatchingService.skipUser(uid);
       }
@@ -101,9 +116,19 @@ const Dashboard = () => {
     }
   };
 
-  const openMessageModal = (uid) => {
+  const openMessageModal = async (uid) => {
     setTargetUidForMsg(uid);
     setMessageModalOpen(true);
+    
+    // Fetch latest request count from server when button is clicked
+    try {
+      const res = await UserService.getMe();
+      if (res.data.status === 'success') {
+        setDailyRequestCount(res.data.data.user.dailyRequestCount || 0);
+      }
+    } catch (err) {
+      console.error("Failed to refresh daily request count", err);
+    }
   };
 
   const handleMessageRequest = async (e) => {
@@ -151,7 +176,7 @@ const Dashboard = () => {
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', zIndex: 10 }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>Discover</h1>
-        <button className="icon-btn"><Search size={24} /></button>
+        <button className="icon-btn" onClick={() => navigate('/search')}><Search size={24} /></button>
       </div>
 
       <div className="swipe-card-container" style={{ flex: 1, position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
@@ -503,6 +528,20 @@ const Dashboard = () => {
         </div>
       </div>
       )}
+
+      {/* Match Dialog */}
+      <MatchDialog
+        isOpen={matchDialogOpen}
+        myProfile={myProfile}
+        matchedProfile={matchedUser}
+        onKeepMatching={() => {
+          setMatchDialogOpen(false);
+        }}
+        onSayHello={() => {
+          setMatchDialogOpen(false);
+          navigate(`/chat/${matchData.chatId}`, { state: { otherUser: matchedUser }, replace: true });
+        }}
+      />
     </div>
   );
 };

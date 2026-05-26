@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Home, Heart, User, LogOut, Bell } from 'lucide-react';
+import { Home, Heart, User, LogOut, Bell, Search, MessageCircle } from 'lucide-react';
 import { auth } from '../firebase';
 import { initiateSocketConnection, disconnectSocket } from '../services/socket';
+import GlobalToast from './GlobalToast';
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -31,21 +32,19 @@ const Layout = () => {
   const navItems = [
     { name: 'Home', path: '/dashboard', icon: <Home size={24} /> },
     { name: 'Activity', path: '/activity', icon: <Bell size={24} /> },
-    { name: 'Matches', path: '/matches', icon: <Heart size={24} /> },
+    { name: 'Messages', path: '/matches', icon: <MessageCircle size={24} /> },
     { name: 'Profile', path: '/profile', icon: <User size={24} /> },
   ];
 
   return (
     <div className="layout-container">
+      <GlobalToast />
       {/* Top App Bar for Mobile */}
       <header className="app-header">
         <div className="logo-container">
           <Heart size={28} color="var(--primary)" fill="var(--primary)" />
           <span className="gradient-text logo-text">LoveMitra</span>
         </div>
-        <button onClick={handleLogout} className="icon-btn">
-          <LogOut size={24} />
-        </button>
       </header>
 
       {/* Main Content Area */}
