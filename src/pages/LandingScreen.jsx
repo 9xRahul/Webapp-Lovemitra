@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import api from '../services/api';
@@ -11,6 +11,13 @@ const LandingScreen = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(location.state.message);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {

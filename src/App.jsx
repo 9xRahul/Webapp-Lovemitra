@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import Matches from './pages/Matches';
 import Chat from './pages/Chat';
 import Search from './pages/Search';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -20,7 +21,7 @@ function App() {
             <LandingScreen />
           </div>
         } />
-        <Route element={<div className="app-container"><Layout /></div>}>
+        <Route element={<ProtectedRoute><div className="app-container"><Layout /></div></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/activity" element={<Activity />} />
           <Route path="/matches" element={<Matches />} />
@@ -28,9 +29,11 @@ function App() {
           <Route path="/search" element={<Search />} />
         </Route>
         <Route path="/chat/:chatId" element={
-          <div className="app-container">
-            <Chat />
-          </div>
+          <ProtectedRoute>
+            <div className="app-container">
+              <Chat />
+            </div>
+          </ProtectedRoute>
         } />
       </Routes>
     </Router>
