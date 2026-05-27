@@ -247,7 +247,16 @@ const Chat = () => {
   };
 
   return (
-    <div style={{ flex: 1, maxWidth: '400px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+    <>
+      {/* Top App Bar for Mobile */}
+      <header className="app-header">
+        <div className="logo-container">
+          <Heart size={28} color="var(--primary)" fill="var(--primary)" />
+          <span className="gradient-text logo-text">LoveMitra</span>
+        </div>
+      </header>
+
+      <div style={{ flex: 1, maxWidth: '400px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
         
         {/* Chat User Title */}
         <div className="chat-sticky-header">
@@ -487,6 +496,7 @@ const Chat = () => {
       </form>
       </div>
     </div>
+    </>
   );
 };
 

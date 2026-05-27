@@ -24,6 +24,9 @@ export const UserService = {
   getMe: () => api.get('/users/me'),
   updateMe: (data) => api.patch('/users/updateMe', data),
   getUserById: (uid) => api.get(`/users/${uid}`),
+  uploadPhotos: (formData) => api.post('/users/upload-photos', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 };
 
 export const MatchingService = {

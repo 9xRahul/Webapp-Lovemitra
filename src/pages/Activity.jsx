@@ -12,6 +12,7 @@ const Activity = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('likes');
   const [data, setData] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [loading, setLoading] = useState(true);
   const [interactedProfiles, setInteractedProfiles] = useState({});
 
@@ -41,6 +42,8 @@ const Activity = () => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchUserAndRelationships = async () => {
       if (!auth.currentUser) return;
       try {
@@ -49,6 +52,8 @@ const Activity = () => {
           MatchingService.getRelationshipIds()
         ]);
         
+        if (!isMounted) return;
+
         if (userRes.data.status === 'success') {
           setDailyRequestCount(userRes.data.data.user.dailyRequestCount);
           setMyProfile(userRes.data.data.user);
@@ -60,7 +65,6 @@ const Activity = () => {
           
           if (liked) liked.forEach(id => interactionsMap[id] = 'liked');
           if (skipped) skipped.forEach(id => interactionsMap[id] = 'skipped');
-          // If already matched, they are effectively 'messaged' / connected, so hide like/skip
           if (matched) matched.forEach(id => interactionsMap[id] = 'messaged'); 
           if (contacted) contacted.forEach(id => interactionsMap[id] = 'messaged');
 
@@ -70,34 +74,43 @@ const Activity = () => {
         console.error("Failed to load initial data", err);
       }
     };
-    fetchUserAndRelationships();
-    fetchData();
-  }, [activeTab]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      let res;
-      if (activeTab === 'likes') {
-        res = await MatchingService.getReceivedLikes();
-      } else {
-        res = await MatchingService.getReceivedViews();
-      }
-      if (res.data.status === 'success') {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        let res;
         if (activeTab === 'likes') {
-          setData(res.data.data.users || []);
+          res = await MatchingService.getReceivedLikes();
         } else {
-          // getReceivedViews returns { visits: [{ user: {...}, timestamp: ... }, ...] }
-          const visits = res.data.data.visits || [];
-          setData(visits.map(v => v.user).filter(Boolean));
+          res = await MatchingService.getReceivedViews();
+        }
+
+        if (!isMounted) return;
+
+        if (res.data.status === 'success') {
+          if (activeTab === 'likes') {
+            setData(res.data.data.users || []);
+          } else {
+            const visits = res.data.data.visits || [];
+            setData(visits.map(v => v.user).filter(Boolean));
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to load ${activeTab}`, err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
       }
-    } catch (err) {
-      console.error(`Failed to load ${activeTab}`, err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchUserAndRelationships();
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
 
   const handleLike = async (uid) => {
     try {
@@ -171,17 +184,19 @@ const Activity = () => {
   };
 
   return (
-    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <h1 className="page-title" style={{ marginBottom: '1rem' }}>Activity</h1>
+    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', padding: 0 }}>
+      <div style={{ position: 'sticky', top: 0, background: 'var(--bg-dark)', zIndex: 10, padding: '1.5rem 1.5rem 0.5rem 1.5rem' }}>
+        <h1 className="page-title" style={{ marginBottom: '1rem' }}>Activity</h1>
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
-        {['likes', 'visitors'].map(tab => (
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem' }}>
+          {['likes', 'visitors'].map(tab => (
           <button 
             key={tab}
             onClick={() => {
               if (activeTab !== tab) {
                 setLoading(true);
                 setData([]);
+                setVisibleCount(10);
                 setActiveTab(tab);
               }
             }}
@@ -201,38 +216,62 @@ const Activity = () => {
           </button>
         ))}
       </div>
+      </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '0.5rem 1.5rem 1.5rem 1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
-          <LoadingSpinner text={`Loading ${activeTab}...`} />
+          <div style={{display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: '60vh'}}>
+            <LoadingSpinner text={`Loading ${activeTab}...`} />
+          </div>
         ) : data.length === 0 ? (
           <div className="gradient-text" style={{ margin: 'auto' }}>No {activeTab} yet.</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-            {data.map((user, idx) => (
-              <div 
-                key={idx} 
-                className="glass-card" 
-                style={{ padding: '0', overflow: 'hidden', borderRadius: '16px', cursor: 'pointer' }}
-                onClick={() => openProfileDetail(user)}
-              >
-                <div style={{ height: '150px', background: '#e0e0e0', position: 'relative' }}>
-                  {user.photos && user.photos.length > 0 ? (
-                    <img src={user.photos[0]} alt={user.first_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span className="gradient-text">{user.first_name}</span>
-                    </div>
-                  )}
-                  <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: 'linear-gradient(transparent, rgba(0,0,0,0.9))', color: 'white', padding: '12px 10px 10px' }}>
-                    <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '3px' }}>{user.first_name}, {user.age || 25}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#ccc', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      📍 {user.city || 'Location Unknown'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              {data.slice(0, visibleCount).map((user, idx) => (
+                <div 
+                  key={idx} 
+                  className="glass-card" 
+                  style={{ padding: '0', overflow: 'hidden', borderRadius: '16px', cursor: 'pointer' }}
+                  onClick={() => openProfileDetail(user)}
+                >
+                  <div style={{ height: '150px', background: '#e0e0e0', position: 'relative' }}>
+                    {user.photos && user.photos.length > 0 ? (
+                      <img src={user.photos[0]} alt={user.first_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span className="gradient-text">{user.first_name}</span>
+                      </div>
+                    )}
+                    <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: 'linear-gradient(transparent, rgba(0,0,0,0.9))', color: 'white', padding: '12px 10px 10px' }}>
+                      <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '3px' }}>{user.first_name}, {user.age || 25}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#ccc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        📍 {user.city || 'Location Unknown'}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            
+            {visibleCount < data.length && (
+              <button 
+                onClick={() => setVisibleCount(prev => prev + 10)}
+                style={{
+                  background: 'var(--glass-bg)',
+                  border: '1px solid var(--glass-border)',
+                  color: 'var(--text-dark)',
+                  padding: '12px 24px',
+                  borderRadius: '24px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  margin: '0 auto',
+                  display: 'block'
+                }}
+              >
+                Load More
+              </button>
+            )}
           </div>
         )}
       </div>
