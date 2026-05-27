@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
+@layer base {
+
 :root {
   --primary: #FF4B6E;
   --secondary: #FF8E53;
@@ -1061,5 +1063,8 @@ body {
   margin-top: 1rem;
   cursor: pointer;
   box-shadow: 0 8px 25px rgba(255, 75, 110, 0.3);
+}
+
+
 }
 

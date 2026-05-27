@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 // Web App Pages
+import LandingPage from './pages/LandingPage';
 import LandingScreen from './pages/LandingScreen';
 import Dashboard from './pages/Dashboard';
 import Activity from './pages/Activity';
@@ -16,7 +17,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={
           <div className="app-container">
             <LandingScreen />
           </div>
