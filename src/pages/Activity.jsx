@@ -223,9 +223,21 @@ const Activity = () => {
           <div style={{display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: '60vh'}}>
             <LoadingSpinner text={`Loading ${activeTab}...`} />
           </div>
-        ) : data.length === 0 ? (
-          <div className="gradient-text" style={{ margin: 'auto' }}>No {activeTab} yet.</div>
-        ) : (
+          ) : data.length === 0 ? (
+            <div className="flex flex-col items-center justify-center my-auto w-full text-center p-8 mt-12 animate-[fadeIn_0.5s_ease-out]">
+              <img 
+                src={activeTab === 'likes' ? '/no_likes.png' : '/no_visitors.png'} 
+                alt={`No ${activeTab}`} 
+                className="w-48 h-48 object-contain mb-6 drop-shadow-md opacity-90"
+              />
+              <h3 className="text-xl font-bold text-gray-800 mb-2 capitalize font-inter">No {activeTab} yet</h3>
+              <p className="text-gray-500 font-inter max-w-sm">
+                {activeTab === 'likes' 
+                  ? "When someone likes your profile, they'll appear right here." 
+                  : "When someone visits your profile, you'll be able to see them here."}
+              </p>
+            </div>
+          ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               {data.slice(0, visibleCount).map((user, idx) => (
