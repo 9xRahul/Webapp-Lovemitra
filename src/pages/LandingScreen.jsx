@@ -97,7 +97,7 @@ const LandingScreen = () => {
         <div className="glass-card auth-card relative z-10 !max-w-4xl !p-0 overflow-hidden flex flex-col md:flex-row shadow-2xl border-0">
           
           {/* Left Side - Info Panel */}
-          <div className="hidden md:flex flex-col items-center justify-center p-12 w-1/2 bg-brand-gradient text-white relative overflow-hidden">
+          <div className="flex flex-col items-center justify-center p-8 md:p-12 w-full md:w-1/2 bg-brand-gradient text-white relative overflow-hidden">
             {/* Soft decorative background circles */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
               <div className="absolute top-[-20%] left-[-10%] w-64 h-64 rounded-full bg-white/10 blur-3xl"></div>
@@ -106,12 +106,12 @@ const LandingScreen = () => {
 
             <img src="/app_logo.png" alt="LoveMitra" className="w-32 h-32 object-contain mb-8 drop-shadow-2xl bg-white rounded-[2rem] p-3 shadow-xl relative z-10" />
             <h2 className="text-4xl font-bold mb-4 font-inter relative z-10">LoveMitra</h2>
-            <p className="text-white/90 text-center font-medium leading-relaxed font-inter relative z-10 text-lg">
+            <p className="text-white/90 text-center font-medium leading-relaxed font-inter relative z-10 text-base md:text-lg">
               Connect with thousands of singles ready to start a meaningful journey. 
               Experience the safest, most trusted matchmaking platform built just for you.
             </p>
             
-            <div className="mt-12 flex gap-8 text-white/80 relative z-10">
+            <div className="mt-8 md:mt-12 flex gap-8 text-white/80 relative z-10">
               <div className="flex flex-col items-center">
                 <span className="text-3xl font-bold text-white mb-1">1M+</span>
                 <span className="text-xs uppercase tracking-widest font-bold">Matches</span>
