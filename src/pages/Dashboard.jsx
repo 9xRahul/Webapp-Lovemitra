@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MatchingService, ChatService, UserService } from '../services/api';
+import { MatchingService, ChatService, UserService, PromotionsService } from '../services/api';
 import { Search, X, Heart, MessageCircle, BadgeCheck, Briefcase, GraduationCap, Sparkles, Cigarette, Wine, Utensils, Languages, Camera, Smartphone, Mail, Share, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import TinderCard from 'react-tinder-card';
 import { auth } from '../firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import MatchDialog from '../components/MatchDialog';
+import EventCardModal from '../components/EventCardModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -32,6 +33,10 @@ const Dashboard = () => {
   const [matchedUser, setMatchedUser] = useState(null);
   const [matchData, setMatchData] = useState(null);
 
+  // Promotions State
+  const [promotions, setPromotions] = useState([]);
+  const [showPromotions, setShowPromotions] = useState(false);
+
   // Refs for programmatic swiping
   const cardRefs = useMemo(() => Array(100).fill(0).map(() => React.createRef()), []);
 
@@ -53,10 +58,23 @@ const Dashboard = () => {
       }
     };
 
+    const fetchPromotions = async () => {
+      try {
+        const res = await PromotionsService.getActive();
+        if (res.data.status === 'success' && res.data.data.eventCards?.length > 0) {
+          setPromotions(res.data.data.eventCards);
+          setShowPromotions(true);
+        }
+      } catch (err) {
+        console.error("Failed to load promotions", err);
+      }
+    };
+
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         fetchUser();
         fetchMatches();
+        fetchPromotions();
       } else {
         setLoading(false);
       }
@@ -78,6 +96,14 @@ const Dashboard = () => {
       console.error("Failed to load matches", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkViewed = async (id) => {
+    try {
+      await PromotionsService.markViewed(id);
+    } catch (err) {
+      console.error("Failed to mark promotion viewed", err);
     }
   };
 
@@ -117,6 +143,22 @@ const Dashboard = () => {
   };
 
   const openMessageModal = async (uid) => {
+    try {
+      const relRes = await MatchingService.getRelationshipIds();
+      if (relRes.data.status === 'success') {
+        const { matched } = relRes.data.data;
+        if (matched && matched.includes(uid)) {
+          const myUid = auth.currentUser?.uid;
+          const chatId = [myUid, uid].sort().join('_');
+          const profile = matches.find(m => m.uid === uid) || selectedProfile;
+          navigate(`/chat/${chatId}`, { state: { otherUser: profile } });
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check relationship", err);
+    }
+
     setTargetUidForMsg(uid);
     setMessageModalOpen(true);
     
@@ -529,7 +571,6 @@ const Dashboard = () => {
       </div>
       )}
 
-      {/* Match Dialog */}
       <MatchDialog
         isOpen={matchDialogOpen}
         myProfile={myProfile}
@@ -542,6 +583,15 @@ const Dashboard = () => {
           navigate(`/chat/${matchData.chatId}`, { state: { otherUser: matchedUser }, replace: true });
         }}
       />
+
+      {/* Event Cards Modal */}
+      {showPromotions && promotions.length > 0 && (
+        <EventCardModal 
+          cards={promotions}
+          onClose={() => setShowPromotions(false)}
+          onMarkViewed={handleMarkViewed}
+        />
+      )}
     </div>
   );
 };

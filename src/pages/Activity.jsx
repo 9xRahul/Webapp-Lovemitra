@@ -65,8 +65,8 @@ const Activity = () => {
           
           if (liked) liked.forEach(id => interactionsMap[id] = 'liked');
           if (skipped) skipped.forEach(id => interactionsMap[id] = 'skipped');
-          if (matched) matched.forEach(id => interactionsMap[id] = 'messaged'); 
           if (contacted) contacted.forEach(id => interactionsMap[id] = 'messaged');
+          if (matched) matched.forEach(id => interactionsMap[id] = 'matched');
 
           setInteractedProfiles(prev => ({ ...prev, ...interactionsMap }));
         }
@@ -136,6 +136,14 @@ const Activity = () => {
   };
 
   const openMessageModal = async (uid) => {
+    if (interactedProfiles[uid] === 'matched') {
+      const myUid = auth.currentUser?.uid;
+      const chatId = [myUid, uid].sort().join('_');
+      const profile = data.find(m => m.uid === uid) || selectedProfile;
+      navigate(`/chat/${chatId}`, { state: { otherUser: profile } });
+      return;
+    }
+
     if (interactedProfiles[uid] === 'messaged') {
       setSnackbarMessage("Wait till that particular user replies to your message");
       setSnackbarOpen(true);

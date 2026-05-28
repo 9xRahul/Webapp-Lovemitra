@@ -3,8 +3,36 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ChatService, UserService } from '../services/api';
 import { getSocket, initiateSocketConnection } from '../services/socket';
 import { auth } from '../firebase';
-import { ArrowLeft, Send, Smile, Camera, X, CheckCheck, Check, Heart, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, Smile, Camera, X, CheckCheck, Check, Heart, MessageSquare, MoreVertical, ShieldBan, AlertTriangle, UserX } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
+import { MatchingService } from '../services/api';
+import ConfirmActionModal from '../components/ConfirmActionModal';
+import ReportUserModal from '../components/ReportUserModal';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+const ExpiringImage = ({ src, msgId, onExpire }) => {
+  const [timeLeft, setTimeLeft] = useState(10);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onExpire(msgId);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft, msgId, onExpire]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <img src={src} alt="Attachment" style={{ width: '100%', borderRadius: '10px' }} />
+      <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '12px', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span>{timeLeft}s</span>
+      </div>
+    </div>
+  );
+};
 
 const Chat = () => {
   const { chatId } = useParams();
@@ -24,7 +52,13 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
 
-  const COMMON_EMOJIS = ['😀','😂','🥰','😎','😭','🥺','😍','🔥','❤️','✨','👍','🎉','😊','🙏','🙌','🤔','😅','👀','😘','💯','💀','💕','😌','😩'];
+  // Modals state
+  const [showMenu, setShowMenu] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showUnmatchConfirm, setShowUnmatchConfirm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
 
@@ -111,8 +145,15 @@ const Chat = () => {
           const handleNewMessage = (payload) => {
             if (payload.chatId === chatId) {
               setMessages(prev => {
-                if (prev.some(m => m.content === payload.message.content && Date.now() - new Date(m.createdAt).getTime() < 5000)) {
-                  return prev.map(m => m.content === payload.message.content ? payload.message : m);
+                const existingIndex = prev.findIndex(m => 
+                  (payload.message.clientId && m.clientId === payload.message.clientId) || 
+                  (m.content === payload.message.content && Date.now() - new Date(m.createdAt).getTime() < 5000)
+                );
+                
+                if (existingIndex !== -1) {
+                  const newMsgs = [...prev];
+                  newMsgs[existingIndex] = payload.message;
+                  return newMsgs;
                 }
                 return [...prev, payload.message];
               });
@@ -221,11 +262,31 @@ const Chat = () => {
     if (!text.trim() && !selectedImage) return;
 
     try {
-      const payload = { chatId, content: text, receiverId: otherUser?.uid, type: 'text' };
+      const clientId = Date.now().toString();
+      let payload;
+      let tempContent = text;
+      let msgType = 'text';
+
+      if (selectedImage) {
+        payload = new FormData();
+        payload.append('chatId', chatId);
+        payload.append('receiverId', otherUser?.uid);
+        payload.append('type', 'photo');
+        payload.append('clientId', clientId);
+        if (text.trim()) payload.append('content', text);
+        payload.append('file', selectedImage);
+        
+        tempContent = URL.createObjectURL(selectedImage);
+        msgType = 'photo';
+      } else {
+        payload = { chatId, content: text, receiverId: otherUser?.uid, type: 'text', clientId };
+      }
+
       // Optimistic UI
-      const tempMsg = { _id: Date.now().toString(), senderId: auth.currentUser?.uid || 'me', content: text, type: 'text', createdAt: new Date().toISOString() };
+      const tempMsg = { _id: clientId, clientId, senderId: auth.currentUser?.uid || 'me', content: tempContent, type: msgType, createdAt: new Date().toISOString() };
       setMessages(prev => [...prev, tempMsg]);
       setText('');
+      setSelectedImage(null);
       setTimeout(() => scrollToBottom(), 0);
 
       await ChatService.sendMessage(payload);
@@ -243,6 +304,51 @@ const Chat = () => {
       await ChatService.sendMessage(payload);
     } catch (err) {
       console.error("Failed to send quick message", err);
+    }
+  };
+
+  const handleUnmatch = async () => {
+    if (!otherUser?.uid) return;
+    setIsProcessing(true);
+    try {
+      await MatchingService.unmatchUser(otherUser.uid);
+      setShowUnmatchConfirm(false);
+      navigate('/matches');
+    } catch (err) {
+      console.error("Failed to unmatch user", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBlock = async () => {
+    if (!otherUser?.uid) return;
+    setIsProcessing(true);
+    try {
+      await MatchingService.blockUser(otherUser.uid);
+      setShowBlockConfirm(false);
+      navigate('/matches');
+    } catch (err) {
+      console.error("Failed to block user", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReport = async (reportData) => {
+    if (!otherUser?.uid) return;
+    setIsProcessing(true);
+    try {
+      await MatchingService.reportUser({
+        targetUid: otherUser.uid,
+        ...reportData
+      });
+      setShowReportModal(false);
+      navigate('/matches');
+    } catch (err) {
+      console.error("Failed to report user", err);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -284,6 +390,30 @@ const Chat = () => {
                 </>
               )}
             </div>
+          </div>
+
+          {/* 3-dots menu */}
+          <div style={{ position: 'relative' }}>
+            <button className="icon-btn" onClick={() => setShowMenu(!showMenu)} style={{ padding: 0 }}>
+              <MoreVertical size={24} />
+            </button>
+            
+            {showMenu && (
+              <>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 90 }} onClick={() => setShowMenu(false)} />
+                <div style={{ position: 'absolute', top: '40px', right: '0', background: '#1c1c1e', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 5px 20px rgba(0,0,0,0.5)', width: '180px', zIndex: 100, overflow: 'hidden' }}>
+                  <button onClick={() => { setShowMenu(false); setShowUnmatchConfirm(true); }} style={{ width: '100%', padding: '12px 15px', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'white', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer' }}>
+                    <UserX size={16} /> Unmatch
+                  </button>
+                  <button onClick={() => { setShowMenu(false); setShowBlockConfirm(true); }} style={{ width: '100%', padding: '12px 15px', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#ff4b4b', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer' }}>
+                    <ShieldBan size={16} /> Block User
+                  </button>
+                  <button onClick={() => { setShowMenu(false); setShowReportModal(true); }} style={{ width: '100%', padding: '12px 15px', background: 'transparent', border: 'none', color: '#ff4b4b', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', cursor: 'pointer' }}>
+                    <AlertTriangle size={16} /> Report User
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -373,8 +503,19 @@ const Chat = () => {
               flexDirection: 'column',
             }}>
               <div style={{ marginBottom: '2px' }}>
-                {msg.type === 'image' || (msg.content && msg.content.startsWith('http')) ? (
-                  <img src={msg.content} alt="Attachment" style={{ width: '100%', borderRadius: '10px' }} />
+                {msg.type === 'photo' || msg.type === 'image' || (msg.content && msg.content.startsWith('http')) ? (
+                  <ExpiringImage 
+                    src={msg.content} 
+                    msgId={msg._id} 
+                    onExpire={async (id) => {
+                      setMessages(prev => prev.filter(m => m._id !== id));
+                      try {
+                        await ChatService.deleteMessage(id);
+                      } catch (err) {
+                        console.error('Failed to delete expired message', err);
+                      }
+                    }}
+                  />
                 ) : (
                   msg.content || ''
                 )}
@@ -424,34 +565,14 @@ const Chat = () => {
       <div className="chat-sticky-footer" style={{ borderTop: '1px solid var(--glass-border)' }}>
         {/* Emoji Picker Popup */}
         {showEmojiPicker && (
-          <div style={{ 
-            position: 'absolute', 
-            bottom: '100%', 
-            left: '15px', 
-            background: '#1c1c1e', 
-            border: '1px solid var(--glass-border)', 
-            borderRadius: '15px', 
-            padding: '10px', 
-            marginBottom: '10px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(6, 1fr)',
-            gap: '8px',
-            boxShadow: '0 -5px 20px rgba(0,0,0,0.5)',
-            zIndex: 100
-          }}>
-            {COMMON_EMOJIS.map(emoji => (
-              <button 
-                key={emoji} 
-                type="button"
-                onClick={() => {
-                  setText(prev => prev + emoji);
-                  setShowEmojiPicker(false);
-                }}
-                style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', padding: '5px' }}
-              >
-                {emoji}
-              </button>
-            ))}
+          <div style={{ position: 'absolute', bottom: '100%', left: '15px', marginBottom: '10px', zIndex: 100 }}>
+            <EmojiPicker 
+              theme="dark" 
+              onEmojiClick={(emojiData) => {
+                setText(prev => prev + emojiData.emoji);
+                setShowEmojiPicker(false);
+              }} 
+            />
           </div>
         )}
 
@@ -495,6 +616,34 @@ const Chat = () => {
         </button>
       </form>
       </div>
+
+      <ConfirmActionModal 
+        isOpen={showUnmatchConfirm}
+        onClose={() => setShowUnmatchConfirm(false)}
+        onConfirm={handleUnmatch}
+        title={`Unmatch ${otherUser?.first_name}?`}
+        message="You will be removed from each other's match list and you won't be able to message them again."
+        confirmText="Unmatch"
+        isLoading={isProcessing}
+      />
+
+      <ConfirmActionModal 
+        isOpen={showBlockConfirm}
+        onClose={() => setShowBlockConfirm(false)}
+        onConfirm={handleBlock}
+        title={`Block ${otherUser?.first_name}?`}
+        message="They won't be able to find your profile, see your posts, or message you. This action is irreversible."
+        confirmText="Block"
+        isLoading={isProcessing}
+      />
+
+      <ReportUserModal 
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onReport={handleReport}
+        targetName={otherUser?.first_name}
+        isLoading={isProcessing}
+      />
     </div>
     </>
   );

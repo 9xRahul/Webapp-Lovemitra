@@ -76,7 +76,9 @@ const Matches = () => {
                               </div>
                               <div className="match-details">
                                 <h3 style={{ color: '#ff4b82' }}>{otherUser.first_name || 'User'}, {otherUser.age || ''}</h3>
-                                <p style={{ color: '#fff', fontWeight: '500' }}>{match.lastMessage || 'Sent you a message request'}</p>
+                                <p style={{ color: '#fff', fontWeight: '500' }}>
+                                  {match.lastMessage?.startsWith('http') ? '📷 Photo' : (match.lastMessage || 'Sent you a message request')}
+                                </p>
                               </div>
                               <div style={{ background: '#ff4b82', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', padding: '4px 10px', borderRadius: '12px' }}>
                                 NEW
@@ -113,7 +115,7 @@ const Matches = () => {
                               </div>
                               <div className="match-details">
                                 <h3>{otherUser.first_name || 'Match'}, {otherUser.age || ''}</h3>
-                                <p>{match.lastMessage || 'Tap to chat'}</p>
+                                <p>{match.lastMessage?.startsWith('http') ? '📷 Photo' : (match.lastMessage || 'Tap to chat')}</p>
                               </div>
                               <button className="icon-btn chat-btn">
                                 <MessageCircle size={24} />

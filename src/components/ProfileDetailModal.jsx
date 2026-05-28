@@ -1,8 +1,45 @@
-import React from 'react';
-import { X, BadgeCheck, MessageCircle, Heart, Briefcase, GraduationCap, Sparkles, Cigarette, Wine, Utensils, Languages, Camera, Smartphone, Mail, Share, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, BadgeCheck, MessageCircle, Heart, Briefcase, GraduationCap, Sparkles, Cigarette, Wine, Utensils, Languages, Camera, Smartphone, Mail, Share, AlertTriangle, CheckCircle2, ShieldBan } from 'lucide-react';
+import { MatchingService } from '../services/api';
+import ConfirmActionModal from './ConfirmActionModal';
+import ReportUserModal from './ReportUserModal';
 
 const ProfileDetailModal = ({ isOpen, onClose, profile, onNope, onLike, onMessage, interactionState }) => {
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   if (!isOpen || !profile) return null;
+
+  const handleBlock = async () => {
+    setIsProcessing(true);
+    try {
+      await MatchingService.blockUser(profile.uid);
+      setShowBlockConfirm(false);
+      onClose();
+      // Optionally trigger a refresh or toast here
+    } catch (err) {
+      console.error('Failed to block user', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReport = async (reportData) => {
+    setIsProcessing(true);
+    try {
+      await MatchingService.reportUser({
+        targetUid: profile.uid,
+        ...reportData
+      });
+      setShowReportModal(false);
+      onClose();
+    } catch (err) {
+      console.error('Failed to report user', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -212,13 +249,37 @@ const ProfileDetailModal = ({ isOpen, onClose, profile, onNope, onLike, onMessag
               <Share size={20} /> FORWARD TO A FRIEND
             </button>
             
-            <button style={{ background: 'transparent', border: 'none', color: '#ff4b4b', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem', cursor: 'pointer', fontWeight: '500', padding: '10px' }}>
-              <AlertTriangle size={20} /> BLOCK OR REPORT USER
-            </button>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <button onClick={() => setShowBlockConfirm(true)} style={{ background: 'transparent', border: 'none', color: '#ff4b4b', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer', fontWeight: '500', padding: '10px' }}>
+                <ShieldBan size={18} /> BLOCK USER
+              </button>
+              
+              <button onClick={() => setShowReportModal(true)} style={{ background: 'transparent', border: 'none', color: '#ff4b4b', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer', fontWeight: '500', padding: '10px' }}>
+                <AlertTriangle size={18} /> REPORT USER
+              </button>
+            </div>
           </div>
           
         </div>
       </div>
+
+      <ConfirmActionModal 
+        isOpen={showBlockConfirm}
+        onClose={() => setShowBlockConfirm(false)}
+        onConfirm={handleBlock}
+        title={`Block ${profile.first_name}?`}
+        message="They won't be able to find your profile, see your posts, or message you. This action is irreversible."
+        confirmText="Block"
+        isLoading={isProcessing}
+      />
+
+      <ReportUserModal 
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onReport={handleReport}
+        targetName={profile.first_name}
+        isLoading={isProcessing}
+      />
     </div>
   );
 };

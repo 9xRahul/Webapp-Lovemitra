@@ -116,6 +116,22 @@ const Search = () => {
   };
 
   const openMessageModal = async (uid) => {
+    try {
+      const relRes = await MatchingService.getRelationshipIds();
+      if (relRes.data.status === 'success') {
+        const { matched } = relRes.data.data;
+        if (matched && matched.includes(uid)) {
+          const myUid = auth.currentUser?.uid;
+          const chatId = [myUid, uid].sort().join('_');
+          const profile = searchResults.find(m => m.uid === uid) || selectedProfile;
+          navigate(`/chat/${chatId}`, { state: { otherUser: profile } });
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check relationship", err);
+    }
+
     setTargetUidForMsg(uid);
     setMessageModalOpen(true);
     try {

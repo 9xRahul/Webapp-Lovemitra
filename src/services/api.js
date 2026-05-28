@@ -39,12 +39,18 @@ export const MatchingService = {
   getReceivedViews: () => api.get('/matching/received-views'),
   getMatches: () => api.get('/matching/matches'),
   getRelationshipIds: () => api.get('/matching/relationship-ids'),
+  reportUser: (data) => api.post('/matching/report', data),
+  blockUser: (targetUid) => api.post('/matching/block', { targetUid }),
+  unmatchUser: (targetUid) => api.delete(`/matching/matches/${targetUid}`),
 };
 
 export const ChatService = {
   getConversations: () => api.get('/chat/conversations'),
   getMessages: (chatId, before = '') => api.get(`/chat/messages/${chatId}${before ? `?before=${before}` : ''}`),
-  sendMessage: (data) => api.post('/chat/messages', data), // expects FormData if media, or JSON { chatId, text, receiverId }
+  sendMessage: (data) => api.post('/chat/messages', data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}),
   markAsRead: (chatId) => api.patch(`/chat/messages/${chatId}/read`),
+  deleteMessage: (messageId) => api.delete(`/chat/messages/${messageId}`),
+};export const PromotionsService = {
+  getActive: () => api.get('/promotions/active'),
+  markViewed: (id) => api.patch(`/promotions/event-cards/${id}/view`),
 };
-

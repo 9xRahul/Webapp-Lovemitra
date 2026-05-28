@@ -101,6 +101,7 @@ const Profile = () => {
   
   const fileInputRef = React.useRef(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showCompletionTooltip, setShowCompletionTooltip] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -123,6 +124,56 @@ const Profile = () => {
   
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+
+  const completionStats = React.useMemo(() => {
+    const fields = [
+      { key: 'first_name', label: 'Name' },
+      { key: 'age', label: 'Age' },
+      { key: 'gender', label: 'Gender' },
+      { key: 'city', label: 'City' },
+      { key: 'profession', label: 'Profession' },
+      { key: 'education', label: 'Education' },
+      { key: 'bio', label: 'About Me' },
+      { key: 'interests', label: 'Interests', isArray: true },
+      { key: 'languages', label: 'Languages', isArray: true },
+      { key: 'smoking', label: 'Smoking Habits' },
+      { key: 'drinking', label: 'Drinking Habits' },
+      { key: 'eating', label: 'Dietary Preferences' },
+      { key: 'zodiac_sign', label: 'Zodiac Sign' },
+      { key: 'relationship_status', label: 'Relationship Status' },
+      { key: 'looking_for', label: 'Looking For' },
+    ];
+
+    let completed = 0;
+    const missing = [];
+
+    // Check photos
+    if (profile?.photos && profile.photos.length > 0) {
+      completed++;
+    } else {
+      missing.push('Photos');
+    }
+
+    fields.forEach(f => {
+      const val = formData[f.key];
+      let isFilled = false;
+      if (f.isArray) {
+        isFilled = Array.isArray(val) && val.length > 0;
+      } else {
+        isFilled = val !== undefined && val !== null && String(val).trim() !== '' && val !== 'Not specified' && val !== 'Select';
+      }
+
+      if (isFilled) {
+        completed++;
+      } else {
+        missing.push(f.label);
+      }
+    });
+
+    const totalFields = fields.length + 1;
+    const percent = Math.round((completed / totalFields) * 100);
+    return { percent, missing };
+  }, [formData, profile]);
 
   useEffect(() => {
     fetchProfile();
@@ -298,14 +349,57 @@ const Profile = () => {
           Online
         </div>
 
-        <div className="completion-container">
+        <div 
+          className="completion-container" 
+          style={{ position: 'relative' }}
+          onMouseEnter={() => setShowCompletionTooltip(true)}
+          onMouseLeave={() => setShowCompletionTooltip(false)}
+        >
           <div className="completion-header">
             <span>Profile Completion</span>
-            <span className="completion-percent">80%</span>
+            <span className="completion-percent">{completionStats.percent}%</span>
           </div>
           <div className="completion-track">
-            <div className="completion-fill" style={{ width: '80%' }}></div>
+            <div className="completion-fill" style={{ width: `${completionStats.percent}%` }}></div>
           </div>
+          
+          {showCompletionTooltip && completionStats.missing.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: '10px',
+              background: 'rgba(28, 28, 30, 0.95)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '12px',
+              padding: '15px',
+              width: 'max-content',
+              maxWidth: '250px',
+              zIndex: 100,
+              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(10px)',
+              pointerEvents: 'none'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-6px',
+                left: '50%',
+                transform: 'translateX(-50%) rotate(45deg)',
+                width: '12px',
+                height: '12px',
+                background: 'rgba(28, 28, 30, 0.95)',
+                borderLeft: '1px solid rgba(255,255,255,0.1)',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+              }} />
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'white' }}>To reach 100%, add:</h4>
+              <ul style={{ margin: 0, padding: '0 0 0 15px', fontSize: '0.85rem', color: '#ccc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {completionStats.missing.map(field => (
+                  <li key={field}>{field}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
