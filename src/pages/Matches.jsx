@@ -4,6 +4,7 @@ import { ChatService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { auth } from '../firebase';
+import { getSocket, initiateSocketConnection } from '../services/socket';
 
 const Matches = () => {
   const [conversations, setConversations] = useState([]);
@@ -11,10 +12,25 @@ const Matches = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchConversations();
+    fetchConversations(true);
+
+    if (auth.currentUser) {
+      const socket = initiateSocketConnection(auth.currentUser.uid);
+      
+      const handleNewMessage = () => {
+        fetchConversations(false);
+      };
+
+      socket.on('new_message', handleNewMessage);
+      
+      return () => {
+        socket.off('new_message', handleNewMessage);
+      };
+    }
   }, []);
 
-  const fetchConversations = async () => {
+  const fetchConversations = async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const res = await ChatService.getConversations();
       if (res.data.status === 'success') {
@@ -23,7 +39,7 @@ const Matches = () => {
     } catch (err) {
       console.error("Failed to load conversations", err);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
