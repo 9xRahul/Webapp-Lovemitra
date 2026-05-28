@@ -117,9 +117,16 @@ const Matches = () => {
                                 <h3>{otherUser.first_name || 'Match'}, {otherUser.age || ''}</h3>
                                 <p>{match.lastMessage?.startsWith('http') ? '📷 Photo' : (match.lastMessage || 'Tap to chat')}</p>
                               </div>
-                              <button className="icon-btn chat-btn">
-                                <MessageCircle size={24} />
-                              </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {match.unseenCount && match.unseenCount[myUid] > 0 && (
+                                  <div style={{ background: '#ff4b82', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', padding: '4px 10px', borderRadius: '12px' }}>
+                                    {match.unseenCount[myUid]}
+                                  </div>
+                                )}
+                                <button className="icon-btn chat-btn">
+                                  <MessageCircle size={24} />
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
