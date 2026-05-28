@@ -15,7 +15,8 @@ const Matches = () => {
     fetchConversations(true);
 
     if (auth.currentUser) {
-      const socket = initiateSocketConnection(auth.currentUser.uid);
+      initiateSocketConnection(auth.currentUser.uid);
+      const socket = getSocket();
       
       const handleNewMessage = () => {
         fetchConversations(false);
