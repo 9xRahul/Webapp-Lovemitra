@@ -97,7 +97,7 @@ const GlobalToast = () => {
       if (payload.message.senderId === auth.currentUser?.uid) return;
 
       const title = `New Message from ${payload.senderName || 'Match'}`;
-      const body = payload.message.type === 'text' ? payload.message.content : `Sent you a ${payload.message.type}`;
+      const body = "Sent you a message";
       
       triggerBrowserNotification(title, body);
       addToast({

@@ -353,7 +353,7 @@ const Chat = () => {
   };
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', width: '100%' }}>
       {/* Top App Bar for Mobile */}
       <header className="app-header">
         <div className="logo-container">
@@ -362,7 +362,7 @@ const Chat = () => {
         </div>
       </header>
 
-      <div style={{ flex: 1, maxWidth: '400px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+      <div style={{ flex: 1, maxWidth: '400px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
         
         {/* Chat User Title */}
         <div className="chat-sticky-header">
@@ -421,6 +421,7 @@ const Chat = () => {
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
+        className="no-scrollbar"
         style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '10px' }}
       >
         {loading ? (
@@ -644,8 +645,8 @@ const Chat = () => {
         targetName={otherUser?.first_name}
         isLoading={isProcessing}
       />
+      </div>
     </div>
-    </>
   );
 };
 

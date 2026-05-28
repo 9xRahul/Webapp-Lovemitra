@@ -46,9 +46,9 @@ const Matches = () => {
 
   return (
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <h1 className="page-title">Messages</h1>
+      <h1 className="page-title sticky-page-title">Messages</h1>
 
-      <div className="matches-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div className="matches-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: '10px' }}>
         {loading ? (
           <LoadingSpinner text="Loading messages..." />
         ) : conversations.length === 0 ? (
@@ -94,7 +94,7 @@ const Matches = () => {
                               <div className="match-details">
                                 <h3 style={{ color: '#ff4b82' }}>{otherUser.first_name || 'User'}, {otherUser.age || ''}</h3>
                                 <p style={{ color: '#fff', fontWeight: '500' }}>
-                                  {match.lastMessage?.startsWith('http') ? '📷 Photo' : (match.lastMessage || 'Sent you a message request')}
+                                  Sent you a message request
                                 </p>
                               </div>
                               <div style={{ background: '#ff4b82', color: 'white', fontSize: '0.75rem', fontWeight: 'bold', padding: '4px 10px', borderRadius: '12px' }}>
@@ -132,7 +132,7 @@ const Matches = () => {
                               </div>
                               <div className="match-details">
                                 <h3>{otherUser.first_name || 'Match'}, {otherUser.age || ''}</h3>
-                                <p>{match.lastMessage?.startsWith('http') ? '📷 Photo' : (match.lastMessage || 'Tap to chat')}</p>
+                                <p>{match.unseenCount && match.unseenCount[myUid] > 0 ? 'New message' : ''}</p>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 {match.unseenCount && match.unseenCount[myUid] > 0 && (

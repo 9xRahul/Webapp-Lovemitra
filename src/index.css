@@ -224,13 +224,15 @@ body {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
   background: var(--bg-light);
   border-bottom: 1px solid var(--glass-border);
-  z-index: 10;
+  z-index: 1000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -331,6 +333,22 @@ body {
   font-size: 2rem;
   margin-bottom: 1.5rem;
   font-weight: 700;
+}
+
+.sticky-page-title {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--bg-light);
+  padding-top: 1.5rem;
+  padding-bottom: 1rem;
+  margin-top: -1.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sticky-page-title {
+    background-color: var(--bg-dark);
+  }
 }
 
 .swipe-card-container {
