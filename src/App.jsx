@@ -14,6 +14,10 @@ import Profile from './pages/Profile';
 import Matches from './pages/Matches';
 import Chat from './pages/Chat';
 import Search from './pages/Search';
+import FAQ from './pages/FAQ';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import CleanUsage from './pages/CleanUsage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -51,6 +55,10 @@ function App() {
             <Signup />
           </div>
         } />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/clean-usage" element={<CleanUsage />} />
         <Route element={<ProtectedRoute><div className="app-container"><Layout /></div></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/activity" element={<Activity />} />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { Heart } from 'lucide-react';
 import { auth } from '../firebase';
 import api from '../services/api';
@@ -49,6 +49,8 @@ const LandingScreen = () => {
   const [showAppDialog, setShowAppDialog] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [resendStatus, setResendStatus] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetStatus, setResetStatus] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,10 +64,24 @@ const LandingScreen = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         await user.reload();
-        if (user.emailVerified) {
-          navigate('/dashboard', { replace: true });
-        } else {
-          setShowVerificationDialog(true);
+        try {
+          const res = await api.get('/users/me');
+          const dbUser = res.data.data.user;
+          if (dbUser.isEmailVerified) {
+            navigate('/dashboard', { replace: true });
+          } else if (user.emailVerified) {
+            await api.patch('/users/updateMe', { is_email_verified: true });
+            navigate('/dashboard', { replace: true });
+          } else {
+            setShowVerificationDialog(true);
+          }
+        } catch (e) {
+          // Fallback if backend fetch fails
+          if (user.emailVerified) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            setShowVerificationDialog(true);
+          }
         }
       }
     });
@@ -79,6 +95,11 @@ const LandingScreen = () => {
       interval = setInterval(async () => {
         await auth.currentUser.reload();
         if (auth.currentUser.emailVerified) {
+          try {
+            await api.patch('/users/updateMe', { is_email_verified: true });
+          } catch (e) {
+            console.error("Failed to update email verification flag in DB", e);
+          }
           setShowVerificationDialog(false);
           clearInterval(interval);
           navigate('/dashboard', { replace: true });
@@ -99,17 +120,23 @@ const LandingScreen = () => {
       // Firebase Login
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      await userCredential.user.reload();
-      if (!userCredential.user.emailVerified) {
-        setShowVerificationDialog(true);
-        setLoading(false);
-        return;
-      }
-
       const idToken = await userCredential.user.getIdToken();
       // The backend /auth/signup endpoint handles both login (returns existing) and signup
-      await api.post('/auth/signup', { idToken });
-      navigate('/dashboard', { replace: true });
+      const res = await api.post('/auth/signup', { idToken });
+      const dbUser = res.data.data.user;
+
+      if (!dbUser.isEmailVerified) {
+        if (userCredential.user.emailVerified) {
+          try {
+            await api.patch('/users/updateMe', { is_email_verified: true });
+          } catch (e) {}
+          navigate('/dashboard', { replace: true });
+        } else {
+          setShowVerificationDialog(true);
+        }
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       setError(err.message || 'An error occurred.');
     } finally {
@@ -118,7 +145,26 @@ const LandingScreen = () => {
   };
 
   const handleResetPassword = () => {
+    setResetEmail(email.includes('@') ? email : '');
+    setResetStatus('');
     setShowAppDialog(true);
+  };
+
+  const handleSendResetLink = async () => {
+    if (!resetEmail || !resetEmail.includes('@')) {
+      setResetStatus('Please enter a valid email address');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetStatus('Password reset email sent! Please check your inbox.');
+      setTimeout(() => {
+        setShowAppDialog(false);
+        setResetStatus('');
+      }, 3000);
+    } catch (err) {
+      setResetStatus(err.message || 'Failed to send reset email.');
+    }
   };
 
   const handleLogout = async () => {
@@ -231,25 +277,53 @@ const LandingScreen = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4 transition-opacity">
           <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl relative text-center">
             <button 
-              onClick={() => setShowAppDialog(false)}
+              onClick={() => {
+                setShowAppDialog(false);
+                setResetStatus('');
+              }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
             
-            <div className="w-20 h-20 bg-brand-gradient rounded-2xl flex items-center justify-center mx-auto mb-6 text-white shadow-xl rotate-3">
-              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-3 font-inter">Use the Mobile App</h2>
-            <p className="text-gray-600 mb-8 font-inter leading-relaxed">
-              To keep our community safe and verified, please use the LoveMitra mobile app to create a new account or reset your password.
+            <h2 className="text-3xl font-bold text-gray-900 mb-3 font-inter text-primary-start">Reset Password</h2>
+            <p className="text-gray-600 mb-6 font-inter leading-relaxed">
+              Enter your email address to receive a password reset link.
             </p>
-            <button 
-              onClick={() => setShowAppDialog(false)}
-              className="w-full bg-brand-gradient text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 font-inter text-lg"
-            >
-              Got it
-            </button>
+
+            <div className="text-left mb-6">
+              <input 
+                type="email" 
+                value={resetEmail} 
+                onChange={(e) => setResetEmail(e.target.value)} 
+                required 
+                placeholder="Email address"
+                className="w-full !rounded-xl border-gray-200 !bg-gray-50 !text-gray-900 placeholder:text-gray-400 focus:border-primary-start focus:ring-1 focus:ring-primary-start transition-all px-4 py-3"
+              />
+              {resetStatus && (
+                <p className={`mt-2 text-sm font-medium ${resetStatus.includes('sent') ? 'text-green-600' : 'text-primary-start'}`}>
+                  {resetStatus}
+                </p>
+              )}
+            </div>
+            
+            <div className="flex gap-4">
+              <button 
+                onClick={() => {
+                  setShowAppDialog(false);
+                  setResetStatus('');
+                }}
+                className="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl transition-all hover:bg-gray-200 font-inter text-base"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSendResetLink}
+                className="flex-1 bg-brand-gradient text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 font-inter text-base"
+              >
+                Send Link
+              </button>
+            </div>
           </div>
         </div>
       )}
