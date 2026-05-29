@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from 'firebase/auth';
 import { Heart } from 'lucide-react';
 import { auth } from '../firebase';
 import api from '../services/api';
@@ -47,6 +47,8 @@ const LandingScreen = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAppDialog, setShowAppDialog] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [resendStatus, setResendStatus] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,13 +59,36 @@ const LandingScreen = () => {
   }, [location.state]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        navigate('/dashboard', { replace: true });
+        await user.reload();
+        if (user.emailVerified) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          setShowVerificationDialog(true);
+        }
       }
     });
     return () => unsubscribe();
   }, [navigate]);
+
+  // Continuously check for email verification when the dialog is open
+  useEffect(() => {
+    let interval;
+    if (showVerificationDialog && auth.currentUser) {
+      interval = setInterval(async () => {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          setShowVerificationDialog(false);
+          clearInterval(interval);
+          navigate('/dashboard', { replace: true });
+        }
+      }, 3000); // Check every 3 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showVerificationDialog, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,6 +98,14 @@ const LandingScreen = () => {
     try {
       // Firebase Login
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      await userCredential.user.reload();
+      if (!userCredential.user.emailVerified) {
+        setShowVerificationDialog(true);
+        setLoading(false);
+        return;
+      }
+
       const idToken = await userCredential.user.getIdToken();
       // The backend /auth/signup endpoint handles both login (returns existing) and signup
       await api.post('/auth/signup', { idToken });
@@ -86,6 +119,23 @@ const LandingScreen = () => {
 
   const handleResetPassword = () => {
     setShowAppDialog(true);
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setShowVerificationDialog(false);
+  };
+
+  const handleResendEmail = async () => {
+    if (auth.currentUser) {
+      try {
+        await sendEmailVerification(auth.currentUser);
+        setResendStatus('Verification email sent!');
+        setTimeout(() => setResendStatus(''), 3000);
+      } catch (err) {
+        setResendStatus('Failed to send email. Try again later.');
+      }
+    }
   };
 
   return (
@@ -169,7 +219,7 @@ const LandingScreen = () => {
 
             <div className="toggle-auth mt-8 pt-6 border-t border-gray-100">
               <span className="text-gray-500 font-inter">Don't have an account?</span>
-              <button className="btn-text !text-primary-start hover:!text-primary-end font-bold ml-2" type="button" onClick={() => setShowAppDialog(true)}>
+              <button className="btn-text !text-primary-start hover:!text-primary-end font-bold ml-2" type="button" onClick={() => navigate('/signup')}>
                 Sign Up Now
               </button>
             </div>
@@ -200,6 +250,37 @@ const LandingScreen = () => {
             >
               Got it
             </button>
+          </div>
+        </div>
+      )}
+
+      {showVerificationDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md px-4 transition-opacity">
+          <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl relative text-center">
+            <div className="w-20 h-20 bg-brand-gradient rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><path d="m16 19 2 2 4-4"/></svg>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3 font-inter">Email Not Verified</h2>
+            <p className="text-gray-600 mb-8 font-inter leading-relaxed">
+              Please check your inbox and verify your email address to continue using LoveMitra.
+            </p>
+            
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={handleResendEmail}
+                className="w-full bg-white text-primary-start border-2 border-primary-start font-bold py-3 rounded-xl transition-all hover:bg-primary-start/5 font-inter text-lg"
+              >
+                Resend Verification Email
+              </button>
+              {resendStatus && <p className="text-sm text-green-600 font-medium">{resendStatus}</p>}
+
+              <button 
+                onClick={handleLogout}
+                className="w-full bg-brand-gradient text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 font-inter text-lg"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -92,7 +92,7 @@ const Matches = () => {
                                 ) : null}
                               </div>
                               <div className="match-details">
-                                <h3 style={{ color: '#ff4b82' }}>{otherUser.first_name || 'User'}, {otherUser.age || ''}</h3>
+                                <h3 style={{ color: '#ff4b82' }}>{otherUser.first_name || 'User'}{otherUser.age ? `, ${otherUser.age}` : ''}</h3>
                                 <p style={{ color: '#fff', fontWeight: '500' }}>
                                   Sent you a message request
                                 </p>
@@ -131,7 +131,7 @@ const Matches = () => {
                                 ) : null}
                               </div>
                               <div className="match-details">
-                                <h3>{otherUser.first_name || 'Match'}, {otherUser.age || ''}</h3>
+                                <h3>{otherUser.first_name || 'Match'}{otherUser.age ? `, ${otherUser.age}` : ''}</h3>
                                 <p>{match.unseenCount && match.unseenCount[myUid] > 0 ? 'New message' : ''}</p>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

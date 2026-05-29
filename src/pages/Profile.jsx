@@ -31,6 +31,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { auth } from '../firebase';
 import { UserService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import indianCities from '../assets/indian_cities.json';
 
 const ALL_INTERESTS = [
   'Animals / Pets', 'Cars', 'Charity / Volunteering', 'Gadgets', 'Dancing',
@@ -318,9 +319,11 @@ const Profile = () => {
                </div>
             )}
           </div>
-          <div className="badge-verified">
-            <Check size={14} strokeWidth={3} />
-          </div>
+          {profile.isPhotoVerified && (
+            <div className="badge-verified">
+              <Check size={14} strokeWidth={3} />
+            </div>
+          )}
           <div className="btn-edit-avatar" onClick={() => fileInputRef.current?.click()} style={{cursor: 'pointer'}}>
             <Camera size={16} />
           </div>
@@ -471,11 +474,18 @@ const Profile = () => {
               <MapPin size={18} className="premium-input-icon" />
               <input 
                 className="premium-input"
+                name="city"
+                list="profile-cities-list"
                 value={formData.city}
                 onChange={e => setFormData({...formData, city: e.target.value})}
                 disabled={!isEditing}
                 placeholder="E.g. Bangalore, India"
               />
+              <datalist id="profile-cities-list">
+                {indianCities.map(city => (
+                  <option key={city.id} value={`${city.name}, ${city.state}`} />
+                ))}
+              </datalist>
             </div>
           </div>
 

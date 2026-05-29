@@ -29,6 +29,12 @@ export const UserService = {
   }),
 };
 
+export const AuthService = {
+  checkEmail: (email) => api.post('/auth/check-email', { email }),
+  checkMobile: (mobile) => api.post('/auth/check-mobile', { mobile }),
+  signup: (data) => api.post('/auth/signup', data),
+};
+
 export const MatchingService = {
   getPotentialMatches: () => api.get('/matching/potential-matches'),
   searchUsers: (filters) => api.post('/matching/search', filters),

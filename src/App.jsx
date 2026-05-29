@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { auth } from './firebase';
+import { initiateSocketConnection, disconnectSocket } from './services/socket';
 
 // Web App Pages
 import LandingPage from './pages/LandingPage';
 import LandingScreen from './pages/LandingScreen';
+import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Activity from './pages/Activity';
 import Layout from './components/Layout';
@@ -14,6 +17,26 @@ import Search from './pages/Search';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        await user.reload();
+        if (user.emailVerified) {
+          initiateSocketConnection(user.uid);
+        } else {
+          disconnectSocket();
+        }
+      } else {
+        disconnectSocket();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      disconnectSocket();
+    };
+  }, []);
+
   return (
     <Router>
       <Routes>
@@ -21,6 +44,11 @@ function App() {
         <Route path="/login" element={
           <div className="app-container">
             <LandingScreen />
+          </div>
+        } />
+        <Route path="/signup" element={
+          <div className="app-container">
+            <Signup />
           </div>
         } />
         <Route element={<ProtectedRoute><div className="app-container"><Layout /></div></ProtectedRoute>}>

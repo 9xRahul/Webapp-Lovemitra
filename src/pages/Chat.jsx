@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ChatService, UserService } from '../services/api';
-import { getSocket, initiateSocketConnection } from '../services/socket';
+import { getSocket } from '../services/socket';
 import { auth } from '../firebase';
 import { ArrowLeft, Send, Smile, Camera, X, CheckCheck, Check, Heart, MessageSquare, MoreVertical, ShieldBan, AlertTriangle, UserX } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
@@ -130,12 +130,8 @@ const Chat = () => {
           }
         }
 
-        // Initialize socket if Layout hasn't done it yet due to race condition
+        // Use global socket initialized by App.jsx
         let socket = getSocket();
-        if (!socket) {
-          initiateSocketConnection(user.uid);
-          socket = getSocket();
-        }
         
         activeSocket = socket;
 
@@ -160,6 +156,7 @@ const Chat = () => {
               
               if (payload.message.senderId !== user.uid) {
                 socket.emit('message_seen', { messageId: payload.message._id, senderUid: payload.message.senderId });
+                ChatService.markAsRead(chatId).catch(err => console.error("Failed to mark as read", err));
               }
             }
           };

@@ -1,28 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Home, Heart, User, LogOut, Bell, Search, MessageCircle } from 'lucide-react';
 import { auth } from '../firebase';
-import { initiateSocketConnection, disconnectSocket } from '../services/socket';
 import GlobalToast from './GlobalToast';
 
 const Layout = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        initiateSocketConnection(user.uid);
-      } else {
-        disconnectSocket();
-        navigate('/');
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      disconnectSocket();
-    };
-  }, [navigate]);
 
   const handleLogout = async () => {
     await auth.signOut();
