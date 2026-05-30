@@ -41,6 +41,16 @@ export const MatchingService = {
   likeUser: (targetUid) => api.post('/matching/like', { targetUid }),
   skipUser: (targetUid) => api.post('/matching/skip', { targetUid }),
   saveView: (targetUid) => api.post('/matching/view', { targetUid }),
+  updateLocation: (latitude, longitude) => api.post('/matching/nearby/location', { latitude, longitude }),
+  getNearbyMatches: (filters) => {
+    let url = '/matching/nearby?';
+    if (filters?.limit) url += `limit=${filters.limit}&`;
+    if (filters?.page) url += `page=${filters.page}&`;
+    if (filters?.radius) url += `radius=${filters.radius}&`;
+    if (filters?.ageMin) url += `ageMin=${filters.ageMin}&`;
+    if (filters?.ageMax) url += `ageMax=${filters.ageMax}&`;
+    return api.get(url);
+  },
   getReceivedLikes: () => api.get('/matching/received-likes'),
   getReceivedViews: () => api.get('/matching/received-views'),
   getMatches: () => api.get('/matching/matches'),

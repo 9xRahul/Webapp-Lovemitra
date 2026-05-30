@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MatchingService, ChatService, UserService, PromotionsService } from '../services/api';
-import { Search, X, Heart, MessageCircle, BadgeCheck, Briefcase, GraduationCap, Sparkles, Cigarette, Wine, Utensils, Languages, Camera, Smartphone, Mail, Share, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Search, X, Heart, MessageCircle, BadgeCheck, Briefcase, GraduationCap, Sparkles, Cigarette, Wine, Utensils, Languages, Camera, Smartphone, Mail, Share, AlertTriangle, CheckCircle2, MapPin, Sliders } from 'lucide-react';
 import TinderCard from 'react-tinder-card';
 import { auth } from '../firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import MatchDialog from '../components/MatchDialog';
 import EventCardModal from '../components/EventCardModal';
+import useGeolocation from '../hooks/useGeolocation';
+import ReactSlider from 'react-slider';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -36,6 +38,13 @@ const Dashboard = () => {
   // Promotions State
   const [promotions, setPromotions] = useState([]);
   const [showPromotions, setShowPromotions] = useState(false);
+
+  // Discovery Mode State
+  const [discoveryMode, setDiscoveryMode] = useState('discover'); // 'discover' or 'nearby'
+  const [nearbyAgeRange, setNearbyAgeRange] = useState([18, 70]);
+  const [nearbyRadius, setNearbyRadius] = useState(40);
+  const [showNearbyFilters, setShowNearbyFilters] = useState(false);
+  const { locationError, isLoadingLocation, fetchAndSyncLocation } = useGeolocation();
 
   // Refs for programmatic swiping
   const cardRefs = useMemo(() => Array(100).fill(0).map(() => React.createRef()), []);
@@ -82,21 +91,55 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  const fetchMatches = async () => {
+  const fetchMatches = async (mode = discoveryMode, ageRange = nearbyAgeRange, radius = nearbyRadius) => {
     setLoading(true);
+    setMatches([]);
+    
     try {
-      const res = await MatchingService.getPotentialMatches();
-      if (res.data.status === 'success') {
-        // We reverse so that the highest priority match is at the END of the array (rendered last, visually on top)
-        const loadedUsers = (res.data.data.users || []).reverse();
-        setMatches(loadedUsers);
-        updateCurrentIndex(loadedUsers.length - 1);
+      if (mode === 'nearby') {
+        const hasLocation = await fetchAndSyncLocation();
+        if (!hasLocation) {
+          setLoading(false);
+          return;
+        }
+        
+        const res = await MatchingService.getNearbyMatches({
+          radius,
+          ageMin: ageRange[0],
+          ageMax: ageRange[1]
+        });
+        
+        if (res.data.status === 'success') {
+          const loadedUsers = (res.data.data.users || []).reverse();
+          setMatches(loadedUsers);
+          updateCurrentIndex(loadedUsers.length - 1);
+        }
+      } else {
+        const res = await MatchingService.getPotentialMatches();
+        if (res.data.status === 'success') {
+          // We reverse so that the highest priority match is at the END of the array (rendered last, visually on top)
+          const loadedUsers = (res.data.data.users || []).reverse();
+          setMatches(loadedUsers);
+          updateCurrentIndex(loadedUsers.length - 1);
+        }
       }
     } catch (err) {
       console.error("Failed to load matches", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (auth.currentUser && !loading && matches.length === 0 && currentIndex === -1) {
+      // Re-fetch if needed, but handled by mode toggle
+    }
+  }, [discoveryMode]);
+
+  const handleModeChange = (newMode) => {
+    if (newMode === discoveryMode) return;
+    setDiscoveryMode(newMode);
+    fetchMatches(newMode);
   };
 
   const handleMarkViewed = async (id) => {
@@ -216,14 +259,62 @@ const Dashboard = () => {
 
   return (
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', zIndex: 10 }}>
-        <h1 className="page-title" style={{ marginBottom: 0 }}>Discover</h1>
-        <button className="icon-btn" onClick={() => navigate('/search')}><Search size={24} /></button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', zIndex: 10, padding: '0 5px' }}>
+        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', padding: '4px', gap: '5px' }}>
+          <button 
+            onClick={() => handleModeChange('discover')}
+            style={{ 
+              padding: '8px 16px', 
+              borderRadius: '16px', 
+              border: 'none', 
+              background: discoveryMode === 'discover' ? 'linear-gradient(90deg, var(--primary), var(--secondary))' : 'transparent',
+              color: discoveryMode === 'discover' ? 'white' : 'var(--text-secondary)',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+          >
+            Discover
+          </button>
+          <button 
+            onClick={() => handleModeChange('nearby')}
+            style={{ 
+              padding: '8px 16px', 
+              borderRadius: '16px', 
+              border: 'none', 
+              background: discoveryMode === 'nearby' ? 'linear-gradient(90deg, var(--primary), var(--secondary))' : 'transparent',
+              color: discoveryMode === 'nearby' ? 'white' : 'var(--text-secondary)',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.3s'
+            }}
+          >
+            <MapPin size={16} /> Nearby
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {discoveryMode === 'nearby' && (
+            <button className="icon-btn" onClick={() => setShowNearbyFilters(true)}>
+              <Sliders size={24} />
+            </button>
+          )}
+          <button className="icon-btn" onClick={() => navigate('/search')}><Search size={24} /></button>
+        </div>
       </div>
 
       <div className="swipe-card-container" style={{ flex: 1, position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-        {loading ? (
-          <LoadingSpinner text="Finding Matches..." />
+        {loading || isLoadingLocation ? (
+          <LoadingSpinner text={isLoadingLocation ? "Finding your location..." : "Finding Matches..."} />
+        ) : locationError && discoveryMode === 'nearby' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+            <MapPin size={48} color="var(--error)" style={{ marginBottom: '15px' }} />
+            <div className="gradient-text" style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '10px' }}>Location Required</div>
+            <p style={{ marginBottom: '20px' }}>{locationError}</p>
+            <button className="btn-primary" onClick={() => fetchMatches('nearby')} style={{ padding: '10px 20px', borderRadius: '20px' }}>Try Again</button>
+          </div>
         ) : matches.length === 0 || currentIndex < 0 ? (
           <div className="gradient-text" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>No more matches found in this area.</div>
         ) : (
@@ -591,6 +682,69 @@ const Dashboard = () => {
           onClose={() => setShowPromotions(false)}
           onMarkViewed={handleMarkViewed}
         />
+      )}
+
+      {/* Nearby Filters Modal */}
+      {showNearbyFilters && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#121212', width: '100%', maxWidth: '400px', borderRadius: '25px', padding: '30px', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            
+            <button style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', padding: '8px', color: 'white', cursor: 'pointer' }} onClick={() => setShowNearbyFilters(false)}>
+              <X size={20} />
+            </button>
+            
+            <h2 style={{ fontSize: '1.8rem', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '10px', color: 'white' }}>
+              <Sliders size={28} color="var(--primary)" /> Nearby Filters
+            </h2>
+            
+            <div style={{ marginBottom: '30px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: 'white' }}>
+                <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>Maximum Distance</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{nearbyRadius} km</span>
+              </div>
+              <ReactSlider
+                className="horizontal-slider"
+                thumbClassName="example-thumb"
+                trackClassName="example-track"
+                min={2}
+                max={150}
+                value={nearbyRadius}
+                onChange={(value) => setNearbyRadius(value)}
+                renderThumb={(props, state) => <div {...props}></div>}
+              />
+            </div>
+
+            <div style={{ marginBottom: '40px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', color: 'white' }}>
+                <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>Age Range</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{nearbyAgeRange[0]} - {nearbyAgeRange[1]}</span>
+              </div>
+              <ReactSlider
+                className="horizontal-slider"
+                thumbClassName="example-thumb"
+                trackClassName="example-track"
+                min={18}
+                max={70}
+                value={nearbyAgeRange}
+                onChange={(value) => setNearbyAgeRange(value)}
+                pearling
+                minDistance={1}
+                renderThumb={(props, state) => <div {...props}></div>}
+              />
+            </div>
+
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', padding: '16px', borderRadius: '15px', fontSize: '1.1rem', fontWeight: 'bold' }}
+              onClick={() => {
+                setShowNearbyFilters(false);
+                fetchMatches('nearby', nearbyAgeRange, nearbyRadius);
+              }}
+            >
+              Apply & Search
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
